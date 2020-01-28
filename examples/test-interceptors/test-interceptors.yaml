@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-interceptors
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-interceptors
+  template:
+    metadata:
+      labels:
+        app: test-interceptors
+    spec:
+      containers:
+      - name: test-interceptors
+        image: github.com/tektoncd/triggers/examples/test-interceptors
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-interceptors
+spec:
+  type: ClusterIP
+  selector:
+    app: test-interceptors
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: test-interceptors
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: test-interceptors
+rules:
+# Permissions for every EventListener deployment to function
+- apiGroups: ["tekton.dev"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates", "tasks", "taskruns"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+# Permissions to create resources in associated TriggerTemplates
+- apiGroups: ["tekton.dev"]
+  resources: ["taskruns"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: test-interceptors
+subjects:
+- kind: ServiceAccount
+  name: test-interceptors
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: test-interceptors
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: test-interceptors
+spec:
+  params:
+  - name: param-k0
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: TaskRun
+    metadata:
+      generateName: test-interceptors-
+    spec:
+      taskSpec:
+        steps:
+        - name: step-0
+          image: ubuntu
+          script: echo "$(params.param-k0)"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: test-interceptors
+spec:
+  params:
+  - name: param-k0
+    value: $(header.Header-K0)
+---
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: test-interceptors
+spec:
+  serviceAccountName: test-interceptors
+  triggers:
+  - name: test-interceptors-0
+    bindings:
+    - name: test-interceptors
+    template:
+      name: test-interceptors
+    interceptors:
+    - webhook:
+        objectRef:
+          apiVersion: v1
+          kind: Service
+          name: test-interceptors
+        header:
+        - name: Header-K0
+          value: test-interceptors-0
+  - name: test-interceptors-1
+    bindings:
+    - name: test-interceptors
+    template:
+      name: test-interceptors
+    interceptors:
+    - webhook:
+        objectRef:
+          apiVersion: v1
+          kind: Service
+          name: test-interceptors
+        header:
+        - name: Header-K0
+          value: test-interceptors-1
+  - name: test-interceptors-2
+    bindings:
+    - name: test-interceptors
+    template:
+      name: test-interceptors
+    interceptors:
+    - webhook:
+        objectRef:
+          apiVersion: v1
+          kind: Service
+          name: test-interceptors
+        header:
+        - name: Header-K0
+          value: test-interceptors-2
