@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: failed-binding-serviceaccount
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: failed-binding-role
+rules:
+# Permissions for every EventListener deployment to function
+- apiGroups: ["tekton.dev"]
+  resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
+  verbs: ["get"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+# Permissions to create resources in associated TriggerTemplates
+- apiGroups: ["tekton.dev"]
+  resources: ["taskruns"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: failed-binding-rolebinding
+subjects:
+- kind: ServiceAccount
+  name: failed-binding-serviceaccount
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: failed-binding-role
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: failed-binding-tt
+spec:
+  params:
+  - name: message
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: TaskRun
+    metadata:
+      generateName: failed-binding-taskrun-
+    spec:
+      taskSpec:
+        steps:
+        - name: echo-message
+          image: ubuntu
+          script: echo "$(params.message)"
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: failed-binding-tb0
+spec:
+  params:
+  - name: message
+    value: $(body.param0)
+---
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: failed-binding-tb1
+spec:
+  params:
+  - name: message
+    value: $(body.param1)
+---
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: failed-binding-eventlistener
+spec:
+  serviceAccountName: failed-binding-serviceaccount
+  triggers:
+  - name: trigger0
+    bindings:
+    - name: failed-binding-tb0
+    template:
+      name: failed-binding-tt
+  - name: trigger1
+    bindings:
+    - name: failed-binding-tb1
+    template:
+      name: failed-binding-tt
