@@ -126,13 +126,13 @@ type SecretRef struct {
 type EventListenerBinding struct {
 	Name       string             `json:"name"`
 	Kind       TriggerBindingKind `json:"kind"`
-	APIVersion string             `json:"apiversion,omitempty"`
+	APIVersion string             `json:"apiVersion,omitempty"`
 }
 
 // EventListenerTemplate refers to a particular TriggerTemplate resource.
 type EventListenerTemplate struct {
 	Name       string `json:"name"`
-	APIVersion string `json:"apiversion,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
 }
 
 // EventListenerList contains a list of TriggerBinding
